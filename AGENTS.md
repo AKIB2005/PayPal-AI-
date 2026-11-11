@@ -33,8 +33,8 @@ nudge/
         dates.js  split.js  policy.js  templates.js  prompt.js
         llm.js  schema.js  decide.js     <- DONE (Phase 1)
       data/sampleInvoices.json
-      paypal/                  <- Phase 3 (invoicing service, webhook)
-      routes/                  <- Phase 4 (Express API)
+      paypal/                  <- mock.js, sandbox.js, mapping.js (Phase 2/3)
+      app.js service.js store.js events.js   <- Express API + approval logic (Phase 2)
     test/
 ```
 
@@ -83,35 +83,53 @@ Input invoice shape (map PayPal's response into this in Phase 3):
 ```
 `history` per client: `{ "invoicesPaid": 4, "lateCount": 2, "avgDaysLate": 9 }` (drives the "payment-behavior" reasoning).
 
-## Planned API (Phase 4)
-- `GET  /api/invoices?asOf=YYYY-MM-DD` -> invoices + decision for each
-- `POST /api/invoices/:id/approve` body `{ subject?, body? }` (edited text allowed) -> PayPal remind / apply split
-- `POST /api/invoices/:id/reject` -> records rejection, no send
-- `POST /api/webhooks/paypal` -> invoice paid/updated events
+## API (built in Phase 2)
+- `GET  /api/config` -> `{ paypalMode, llmProvider, defaultAsOf, today, demoTools }`
+- `GET  /api/invoices?asOf=YYYY-MM-DD[&refresh=1]` -> `{ asOf, rows: [{ invoice, decision, rejected }] }`
+- `POST /api/invoices/:id/approve` body `{ asOf, subject?, body? }` -> re-checks policy on the server, then PayPal remind (+ partial payment for split offers)
+- `POST /api/invoices/:id/reject` body `{ asOf }`
+- `POST /api/webhooks/paypal` -> verifies signature with PayPal, then refreshes + pushes an SSE event
+- `POST /api/demo/pay/:id` -> demo button: records a payment, goes through the same webhook handler
+- `GET  /api/events` (SSE) and `GET /api/audit`
+State is in memory (resets on restart). Reminder history is tracked locally (PayPal doesn't give us stage info).
 
-## PayPal (VERIFY in the official docs before coding; these are from memory)
-- Invoicing API v2: create/list/get invoices, send reminder `POST /v2/invoicing/invoices/{id}/remind` (with `subject`, `note`).
-- Split payment: simplest = partial payments with a minimum amount due on the invoice (`minimumAmountDue` in the plan).
-- Webhooks for invoice paid events (don't poll).
-- Seed invoices with past due dates if the API allows; otherwise rely on the demo-date offset.
+## PayPal tech used (hackathon requirement: at least one PayPal technology, sandbox)
+**REST Invoicing API v2** + **Webhooks**. Checked against developer.paypal.com on Nov 11, 2026:
+- `POST /v2/invoicing/invoices/{id}/remind` body: `subject`, `note`, `send_to_recipient`, `additional_recipients`, `send_to_invoicer`. Max 2 reminders/day per API caller.
+- `GET /v2/invoicing/invoices?page&page_size&total_required` -> `{ total_pages, total_items, items }`.
+- Partial payment is `configuration.partial_payment { allow_partial_payment, minimum_amount_due }`. **Not available for accounts in India, Brazil or Israel**: use a US sandbox business account.
+- Invoice date and due date must be **today or later**, so past-due invoices cannot be seeded. Use the demo date (`asOf`).
+- Create invoice returns a link, not an id: the id is the last path segment of `href`.
+- Webhooks: `INVOICING.INVOICE.CREATED / SENT / CANCELLED / PAID / REFUNDED`. Verify with `POST /v1/notifications/verify-webhook-signature` using the webhook id from the dashboard (not the client id). Events only fire for the REST app that did the action. The webhook simulator can't pass verification.
+- Recording a payment via `POST /v2/invoicing/invoices/{id}/payments` fires the PAID webhook (used by the demo button).
+
+**Written from the docs but NOT yet run against a real sandbox** (test first, in this order):
+1. `npm run seed:sandbox` (create/send body shape, `business_name` field, `href` id parsing)
+2. approve -> remind (note length limits unknown)
+3. split offer -> `ensurePartialPayment` (GET + PUT on an already-sent invoice is unverified; failure is non-fatal and reported in the UI)
+4. demo pay button -> `payments` body (`method: CASH` is from memory)
+5. real webhook with a public URL (ngrok/Render) and `PAYPAL_WEBHOOK_ID`
 
 ## Commands
 ```
-cd server
-npm test        # 21 tests, no install needed
-npm run demo    # prints decisions for sample invoices (mock provider)
-LLM_PROVIDER=claude ANTHROPIC_API_KEY=... npm run demo
+npm run install:all          # root: installs server + client
+cd server && npm test        # 38 tests
+cd server && npm run demo    # prints decisions for sample invoices (mock AI)
+cd server && npm run dev     # API on :3001   (copy .env.example to .env first)
+cd client && npm run dev     # UI on :5173, proxies /api to :3001
+npm run build && npm start   # production: Express serves client/dist
+cd server && npm run seed:sandbox   # create demo invoices in the PayPal sandbox
 ```
 
 ## Who does what (to avoid merge conflicts)
 - `server/src/agent/**`, `docs/**`, `AGENTS.md`: Claude-owned. IDE agents: don't rewrite; ask or open a small PR.
 - `client/**`, `server/src/routes/**`, deploy config: IDE agent.
-- `server/src/paypal/**`: Claude (Phase 3), then IDE agent for debugging.
+- `server/src/paypal/**`, `server/src/service.js`: Claude wrote these; IDE agent should debug against the real sandbox and keep the tests passing.
 
 ## Checklist
 - [x] Phase 1: agent policy, prompt, schema, fallbacks, tests, demo, this file
-- [ ] Phase 2: Express + React skeleton, dashboard with mock data (`LLM_PROVIDER=mock`)
-- [ ] Phase 3: PayPal service layer (auth, list, remind, partial payment, webhook)
+- [x] Phase 2: Express API, React dashboard, live updates (SSE), approve/edit/reject, audit log, mock PayPal, tested in a browser
+- [~] Phase 3: PayPal sandbox adapter + webhook + seed script WRITTEN and unit-tested with a fake fetch; needs a real sandbox run (see list above)
 - [ ] Phase 4: wire agent + PayPal + UI; approve/edit/reject; sandbox debugging
 - [ ] Phase 5: deploy (Render), polish, edge cases
 - [ ] Phase 6: README, Devpost text, video script, submission checklist

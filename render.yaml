@@ -1,0 +1,25 @@
+# Render Blueprint (written from memory of Render's format: check against Render docs before relying on it)
+services:
+  - type: web
+    name: nudge
+    runtime: node
+    plan: free
+    buildCommand: npm --prefix server install && npm --prefix client install && npm --prefix client run build
+    startCommand: node server/src/index.js
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PAYPAL_MODE
+        value: sandbox
+      - key: LLM_PROVIDER
+        value: claude
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SENDER_NAME
+        value: Your Name

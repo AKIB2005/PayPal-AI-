@@ -1,0 +1,12 @@
+{
+  "name": "nudge",
+  "version": "0.2.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "build": "npm --prefix client run build",
+    "start": "node server/src/index.js",
+    "test": "npm --prefix server test"
+  }
+}

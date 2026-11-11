@@ -1,0 +1,5 @@
+{
+  "riya":      { "invoicesPaid": 6, "lateCount": 1, "avgDaysLate": 4 },
+  "acme corp": { "invoicesPaid": 4, "lateCount": 4, "avgDaysLate": 19 },
+  "newco":     { "invoicesPaid": 0, "lateCount": 0, "avgDaysLate": 0 }
+}
