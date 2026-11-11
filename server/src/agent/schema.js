@@ -19,7 +19,7 @@ export function validateDecision(d) {
 }
 
 // Checks the raw LLM JSON before we trust it.
-const MONEY = /[$€£₹]|\b(USD|EUR|GBP|INR|CAD|AUD)\b|\d+[.,]\d{2}\b/i;
+const MONEY = /[$€£₹]|\b(USD|EUR|GBP|INR|CAD|AUD)\b|\d+[.,]\d{2}\b|\b\d{3,}\b|\d{1,3}(,\d{3})+/i;
 
 export function checkLLMOutput(o, { allowed, placeholders }) {
   if (!o || typeof o !== 'object') throw new Error('LLM output not an object');
