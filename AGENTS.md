@@ -123,8 +123,9 @@ REST details, checked against developer.paypal.com on Nov 11, 2026:
 ## Commands
 ```
 npm run install:all          # root: installs server + client
-cd server && npm test        # 71 tests
+cd server && npm test        # 79 tests
 cd server && npm run preflight     # checks PayPal + AI setup, says exactly what to fix
+cd server && npm run smoke:deployed -- https://YOUR-APP.onrender.com   # read-only post-deploy check (never sends anything)
 cd server && npm run smoke:paypal  # deeper: every toolkit tool Nudge uses (add --remind INV2-XXX to send one real email)
 cd server && npm run demo    # prints decisions for sample invoices (mock AI)
 cd server && npm run dev     # API on :3001   (copy .env.example to .env first)
@@ -145,7 +146,8 @@ cd server && npm run seed:sandbox   # create demo invoices in the PayPal sandbox
 - [~] Phase 3: PayPal adapter rebuilt on @paypal/agent-toolkit, activity log + endpoint, seed + smoke scripts, 56 tests (fake toolkit). NOT yet run against the real sandbox: do `npm run smoke:paypal` first
 - [x] Phase 4 (code): toolkit mode checked against the real @paypal/agent-toolkit 1.11.0 source (request shapes, error JSON incl. status, so the 400/422 REST fallback does trigger); PayPal tech is visible in the UI (engine badge, "what PayPal will run" preview, confirmation naming the tool, live PayPal tool-call panel); preflight command; end-to-end run in toolkit mode with a PayPal-shaped fake
 - [ ] Phase 4 (needs YOUR keys): `npm run preflight`, then `npm run smoke:paypal`, then `npm run seed:sandbox`, then approve one real reminder and confirm the email arrives
-- [~] Phase 5: render.yaml checked against Render docs + /healthz + first deploy in mock mode; NOT yet deployed
+- [x] Phase 5 (code): AI call timeout (20 s) + hourly AI budget cap + 10 s "Re-run agent" throttle (public-URL cost safety), graceful SIGTERM shutdown, loading state + stale-card guard in the UI, mobile layout checked at 390 px, `smoke:deployed` post-deploy check, `docs/DEPLOY.md`, Render build/start commands run from a clean copy (10 s build, serves app, SPA fallback, 404 JSON for unknown /api)
+- [ ] Phase 5 (needs YOU): deploy on Render (docs/DEPLOY.md), then run `npm run smoke:deployed`
 - [ ] Phase 6: README, Devpost text, video script, submission checklist
 - [ ] Upgrade A: client payment-behavior scoring (history already feeds the agent)
 - [ ] Upgrade B: client-facing negotiation page for the split offer

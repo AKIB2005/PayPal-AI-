@@ -1,8 +1,16 @@
 import { defaultStage } from './policy.js';
 import { template, reasoningFor } from './templates.js';
 
+// A hung model call must never freeze the dashboard: give up after LLM_TIMEOUT_MS and let the caller use templates.
 async function postJson(url, headers, body) {
-  const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+  const ms = Number(process.env.LLM_TIMEOUT_MS) || 20000;
+  let res;
+  try {
+    res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), signal: AbortSignal.timeout(ms) });
+  } catch (e) {
+    if (e?.name === 'TimeoutError' || e?.name === 'AbortError') throw new Error(`LLM request timed out after ${Math.round(ms / 1000)}s`);
+    throw e;
+  }
   if (!res.ok) throw new Error(`LLM HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return res.json();
 }

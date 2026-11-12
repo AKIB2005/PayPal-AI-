@@ -16,7 +16,7 @@ export function createMockPayPal(sample = JSON.parse(readFileSync(new URL('../da
     defaultAsOf: sample.asOf,
     sent, // inspectable by tests
     seedReminders, // earlier reminders from the sample data
-    async listInvoices() { return [...invoices.values()].map(strip); },
+    async listInvoices() { note_('list_invoices'); return [...invoices.values()].map(strip); },
     async sendReminder(id, { subject, note }) {
       if (!invoices.has(id)) throw new Error(`Unknown invoice ${id}`);
       sent.push({ id, subject, note });

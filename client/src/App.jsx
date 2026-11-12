@@ -64,7 +64,8 @@ export default function App() {
   const closed = rows.filter(isClosed);
 
   return (
-    <div className="page">
+    <div className="page" aria-busy={loading}>
+      {loading && <div className="loading-bar" role="progressbar" aria-label="Agent is working" />}
       <header className="top">
         <div>
           <h1>Nudge</h1>
@@ -92,6 +93,7 @@ export default function App() {
           )}
           {config && <button className="ghost" onClick={() => setAsOf(config.defaultAsOf)}>Reset</button>}
           <button className="ghost" onClick={() => load(asOf, true)} disabled={loading}>Re-run agent</button>
+          {loading && <span className="muted small">Agent is thinking…</span>}
         </div>
         <p className="note">Sandbox invoices can't be created in the past, so this date is simulated for the demo.</p>
       </section>
@@ -108,15 +110,15 @@ export default function App() {
         <p className="muted">No invoices found in your PayPal sandbox yet. In the server folder run <code>npm run seed:sandbox</code>, then reload.</p>
       )}
 
-      <Section title="Needs your decision" count={needs.length} empty="Nothing needs a nudge on this date.">
+      <Section loading={loading} title="Needs your decision" count={needs.length} empty="Nothing needs a nudge on this date.">
         {needs.map((r) => <InvoiceCard key={r.invoice.id} row={r} asOf={asOf} config={config} onChange={() => load(asOf)} onNotice={setNotice} />)}
       </Section>
 
-      <Section title="Waiting" count={waiting.length} empty="No invoices waiting.">
+      <Section loading={loading} title="Waiting" count={waiting.length} empty="No invoices waiting.">
         {waiting.map((r) => <InvoiceCard key={r.invoice.id} row={r} asOf={asOf} config={config} onChange={() => load(asOf)} onNotice={setNotice} />)}
       </Section>
 
-      <Section title="Closed" count={closed.length} empty="No paid invoices yet.">
+      <Section loading={loading} title="Closed" count={closed.length} empty="No paid invoices yet.">
         {closed.map((r) => <InvoiceCard key={r.invoice.id} row={r} asOf={asOf} config={config} onChange={() => load(asOf)} onNotice={setNotice} />)}
       </Section>
 
@@ -158,11 +160,11 @@ export default function App() {
   );
 }
 
-function Section({ title, count, empty, children }) {
+function Section({ title, count, empty, loading, children }) {
   return (
     <section className="section">
       <h2>{title} <span className="count">{count}</span></h2>
-      {count === 0 ? <p className="muted">{empty}</p> : <div className="cards">{children}</div>}
+      {count === 0 ? <p className="muted">{empty}</p> : <div className={`cards${loading ? ' stale' : ''}`}>{children}</div>}
     </section>
   );
 }

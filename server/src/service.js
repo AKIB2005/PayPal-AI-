@@ -7,7 +7,10 @@ const HISTORY = JSON.parse(readFileSync(new URL('./data/clientHistory.json', imp
 const SUBJECT_MAX = 200;
 const BODY_MAX = 2000;
 
-export function createService({ paypal, store, hub, provider = 'mock', llm }) {
+const REFRESH_MIN_MS = 10000; // "Re-run agent" can't be spammed (each run costs AI calls)
+
+export function createService({ paypal, store, hub, provider = 'mock', llm, now = Date.now }) {
+  let lastRefresh = -Infinity;
   const histFor = (inv) => HISTORY[(inv.clientName || '').toLowerCase()] || {};
   const remindersOf = (id) => store.reminders.get(id) || [];
   const withReminders = (inv) => ({ ...inv, remindersSent: remindersOf(inv.id) });
@@ -22,11 +25,13 @@ export function createService({ paypal, store, hub, provider = 'mock', llm }) {
   }
 
   async function list({ asOf, refresh = false }) {
+    const doRefresh = refresh && now() - lastRefresh >= REFRESH_MIN_MS;
+    if (doRefresh) lastRefresh = now();
     const raw = await paypal.listInvoices();
     const rows = await Promise.all(raw.map(async (r) => {
       const invoice = withReminders(r);
       const decisionKey = keyFor(invoice, asOf);
-      let decision = refresh ? null : store.decisions.get(decisionKey);
+      let decision = doRefresh ? null : store.decisions.get(decisionKey);
       if (!decision) {
         try {
           decision = await decide({ invoice, history: histFor(invoice), asOf, provider, llm });

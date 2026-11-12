@@ -7,6 +7,7 @@ export function createHub() {
       const msg = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
       for (const c of clients) c.write(msg);
     },
+    closeAll() { for (const c of clients) c.end(); clients.clear(); },
     size: () => clients.size
   };
 }

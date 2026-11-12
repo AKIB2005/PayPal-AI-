@@ -9,10 +9,10 @@ import { createStore } from './store.js';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-export function createApp({ paypal, provider = 'mock', llm, store = createStore(), demoTools = true, clientDist = fileURLToPath(new URL('../../client/dist', import.meta.url)) }) {
+export function createApp({ paypal, provider = 'mock', llm, now, store = createStore(), demoTools = true, clientDist = fileURLToPath(new URL('../../client/dist', import.meta.url)) }) {
   for (const [id, r] of Object.entries(paypal.seedReminders || {})) if (!store.reminders.has(id)) store.reminders.set(id, r);
   const hub = createHub();
-  const service = createService({ paypal, store, hub, provider, llm });
+  const service = createService({ paypal, store, hub, provider, llm, now });
   const today = () => new Date().toISOString().slice(0, 10);
   const defaultAsOf = () => process.env.DEMO_DATE || paypal.defaultAsOf || today();
   const asOfOf = (v) => {
@@ -23,6 +23,7 @@ export function createApp({ paypal, provider = 'mock', llm, store = createStore(
   const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
 
   const app = express();
+  app.disable('x-powered-by');
   app.use(express.json({ limit: '200kb' }));
 
   app.get('/healthz', (req, res) => res.json({ ok: true }));

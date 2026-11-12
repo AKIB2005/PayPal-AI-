@@ -14,7 +14,7 @@ cd server && cp .env.example .env     # defaults: PAYPAL_MODE=mock, LLM_PROVIDER
 npm start                              # http://localhost:3001
 ```
 Development with hot reload: `cd server && npm run dev` and `cd client && npm run dev` (UI on :5173).
-Tests: `npm test` (71 tests). Health check for hosting: `GET /healthz`.
+Tests: `npm test` (79 tests). Health check for hosting: `GET /healthz`.
 
 ## Use a real model
 In `server/.env`: `LLM_PROVIDER=claude` and `ANTHROPIC_API_KEY=...` (or `gemini` and `GEMINI_API_KEY`). If the model fails or returns something unsafe, Nudge falls back to templates and says so in the UI.
@@ -33,7 +33,9 @@ In `server/.env`: `LLM_PROVIDER=claude` and `ANTHROPIC_API_KEY=...` (or `gemini`
 - A **PayPal tool calls** panel logs every call with timing. REST calls (partial-payment update, webhook verification) are labelled REST, so nothing is passed off as a toolkit call.
 
 ## Deploy on Render
-`render.yaml` is included. The first deploy runs in mock mode so it always starts; then in the Render dashboard set `PAYPAL_MODE=sandbox`, `LLM_PROVIDER=claude` and add your keys. State is in memory, so it resets when the free instance restarts.
+Full steps: `docs/DEPLOY.md`. After deploying, `cd server && npm run smoke:deployed -- https://YOUR-APP.onrender.com` runs a read-only health check.
+
+`render.yaml` is included. The first deploy runs in mock mode so it always starts; then in the Render dashboard set `PAYPAL_MODE=sandbox`, `LLM_PROVIDER=claude` and add your keys. State is in memory, so it resets when the free instance restarts. Because the URL is public, AI calls are capped per hour (`LLM_MAX_CALLS_PER_HOUR`), a stalled AI call times out after 20 s, and "Re-run agent" is throttled; over the cap the app falls back to templates and says so.
 
 ## How the agent decides
 1. **Policy (code):** days overdue, cooldown between reminders, an escalation ladder (never softer than the last reminder, no final notice without an earlier one), a minimum amount for a split offer. This produces the list of *allowed* stages.
