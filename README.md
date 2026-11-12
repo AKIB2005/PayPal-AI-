@@ -14,7 +14,7 @@ cd server && cp .env.example .env     # defaults: PAYPAL_MODE=mock, LLM_PROVIDER
 npm start                              # http://localhost:3001
 ```
 Development with hot reload: `cd server && npm run dev` and `cd client && npm run dev` (UI on :5173).
-Tests: `npm test` (38 tests).
+Tests: `npm test` (71 tests). Health check for hosting: `GET /healthz`.
 
 ## Use a real model
 In `server/.env`: `LLM_PROVIDER=claude` and `ANTHROPIC_API_KEY=...` (or `gemini` and `GEMINI_API_KEY`). If the model fails or returns something unsafe, Nudge falls back to templates and says so in the UI.
@@ -22,9 +22,18 @@ In `server/.env`: `LLM_PROVIDER=claude` and `ANTHROPIC_API_KEY=...` (or `gemini`
 ## Use the real PayPal sandbox
 1. Create a **US** sandbox business account and a sandbox personal account at developer.paypal.com. (PayPal partial payments are not available for accounts in India, Brazil or Israel.)
 2. Create a REST app, copy the client id and secret into `server/.env`, set `PAYPAL_MODE=sandbox`, and set `PAYPAL_TEST_PAYER_EMAIL` to the personal account's email.
-3. `cd server && npm run smoke:paypal` checks OAuth and the toolkit tools against your sandbox, then `npm run seed:sandbox` creates and sends five invoices (set `PAYPAL_MODE=sandbox`; `sandbox-rest` skips the toolkit).
+3. `cd server && npm run preflight` checks your keys, PayPal access and AI setup and tells you exactly what to fix. Then `npm run smoke:paypal` exercises each toolkit tool, and `npm run seed:sandbox` creates and sends five invoices (set `PAYPAL_MODE=sandbox`; `sandbox-rest` skips the toolkit).
 4. In the dashboard set the demo date to the date the script prints (today + 21 days).
 5. Webhooks (optional locally): register `https://<your-host>/api/webhooks/paypal` for the invoicing events, then put the webhook id in `PAYPAL_WEBHOOK_ID`. Without it, signature checks fail closed and the "simulate the client paying" button still updates the dashboard.
+
+## PayPal tools you can see in the app
+- The header badge shows which PayPal layer is running (**Agent Toolkit**, REST, or mock).
+- Before you approve, each draft says what PayPal will run (for a split offer: enable partial payments, then `send_invoice_reminder`).
+- After you approve, the confirmation names the exact tool that ran.
+- A **PayPal tool calls** panel logs every call with timing. REST calls (partial-payment update, webhook verification) are labelled REST, so nothing is passed off as a toolkit call.
+
+## Deploy on Render
+`render.yaml` is included. The first deploy runs in mock mode so it always starts; then in the Render dashboard set `PAYPAL_MODE=sandbox`, `LLM_PROVIDER=claude` and add your keys. State is in memory, so it resets when the free instance restarts.
 
 ## How the agent decides
 1. **Policy (code):** days overdue, cooldown between reminders, an escalation ladder (never softer than the last reminder, no final notice without an earlier one), a minimum amount for a split offer. This produces the list of *allowed* stages.

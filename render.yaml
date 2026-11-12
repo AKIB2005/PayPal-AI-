@@ -1,25 +1,30 @@
-# Render Blueprint (written from memory of Render's format: check against Render docs before relying on it)
+# Render Blueprint. Structure checked against Render's docs (type/runtime/plan/buildCommand/startCommand/envVars, sync: false for secrets).
+# First deploy runs in MOCK mode so it always starts. After it is live, change these in the Render dashboard (Environment):
+#   PAYPAL_MODE=sandbox  and  LLM_PROVIDER=claude   (the secret values below are prompted/entered there)
 services:
   - type: web
     name: nudge
     runtime: node
     plan: free
+    healthCheckPath: /healthz
     buildCommand: npm --prefix server install && npm --prefix client install && npm --prefix client run build
     startCommand: node server/src/index.js
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: PAYPAL_MODE
-        value: sandbox
+        value: mock
       - key: LLM_PROVIDER
-        value: claude
+        value: mock
+      - key: SENDER_NAME
+        value: Your Name
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET
         sync: false
       - key: PAYPAL_WEBHOOK_ID
         sync: false
+      - key: PAYPAL_TEST_PAYER_EMAIL
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
-      - key: SENDER_NAME
-        value: Your Name

@@ -2,6 +2,7 @@ import express from 'express';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HttpError } from './errors.js';
+import { addDays } from './agent/dates.js';
 import { createService } from './service.js';
 import { createHub } from './events.js';
 import { createStore } from './store.js';
@@ -24,7 +25,14 @@ export function createApp({ paypal, provider = 'mock', llm, store = createStore(
   const app = express();
   app.use(express.json({ limit: '200kb' }));
 
-  app.get('/api/config', (req, res) => res.json({ paypalMode: paypal.mode, paypalEngine: paypal.engine || paypal.mode, llmProvider: provider, defaultAsOf: defaultAsOf(), today: today(), demoTools }));
+  app.get('/healthz', (req, res) => res.json({ ok: true }));
+
+  // Sandbox invoices are seeded with due dates up to ~19 days ahead, so today + 21 days shows the full range.
+  const suggestedDemoDate = () => (paypal.mode === 'sandbox' ? addDays(today(), 21) : defaultAsOf());
+  app.get('/api/config', (req, res) => res.json({
+    paypalMode: paypal.mode, paypalEngine: paypal.engine || paypal.mode, llmProvider: provider,
+    defaultAsOf: defaultAsOf(), suggestedDemoDate: suggestedDemoDate(), today: today(), demoTools
+  }));
 
   app.get('/api/invoices', wrap(async (req, res) => {
     const asOf = asOfOf(req.query.asOf);

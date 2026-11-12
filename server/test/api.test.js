@@ -117,3 +117,22 @@ test('demo pay button goes through the same webhook path', async () => {
   assert.equal(row(after.json.rows, 'INV-2002').invoice.status, 'PAID');
   close();
 });
+
+test('healthz and config expose what the deploy and UI need', async () => {
+  const { call, close } = await boot();
+  assert.deepEqual((await call('GET', '/healthz')).json, { ok: true });
+  const c = (await call('GET', '/api/config')).json;
+  assert.equal(c.paypalMode, 'mock');
+  assert.equal(c.suggestedDemoDate, c.defaultAsOf); // mock mode: nothing to jump to
+  close();
+});
+
+test('approve reports which PayPal tool ran, and the activity log records it', async () => {
+  const { call, close } = await boot();
+  await call('GET', `/api/invoices?asOf=${AS_OF}`);
+  const ok = await call('POST', '/api/invoices/INV-2001/approve', { asOf: AS_OF });
+  assert.deepEqual(ok.json.paypal, { via: 'mock', tool: 'send_invoice_reminder' });
+  const act = await call('GET', '/api/paypal/activity');
+  assert.equal(act.json.entries[0].tool, 'send_invoice_reminder');
+  close();
+});

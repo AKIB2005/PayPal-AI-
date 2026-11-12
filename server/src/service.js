@@ -62,13 +62,14 @@ export function createService({ paypal, store, hub, provider = 'mock', llm }) {
       partialPayment = await paypal.ensurePartialPayment(invoiceId, decision.splitPlan.minimumAmountDue, decision.currency);
     }
     await paypal.sendReminder(invoiceId, { subject: subj, note });
+    const last = paypal.activity ? paypal.activity()[0] : null; // the call that just ran (toolkit tool, REST fallback, or mock)
 
     store.reminders.set(invoiceId, [...remindersOf(invoiceId), { sentAt: `${asOf}T12:00:00Z`, stage: decision.stage }]);
     purge(invoiceId);
     const edited = subj !== decision.draft.subject || note !== decision.draft.body;
     log({ action: 'approved', invoiceId, clientName: invoice.clientName, stage: decision.stage, edited, source: decision.source });
     hub.emit('invoice-updated', { invoiceId, reason: 'reminder-sent' });
-    return { ok: true, stage: decision.stage, edited, partialPayment };
+    return { ok: true, stage: decision.stage, edited, partialPayment, paypal: last ? { via: last.via, tool: last.tool } : null };
   }
 
   async function reject({ invoiceId, asOf }) {

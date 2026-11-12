@@ -123,7 +123,9 @@ REST details, checked against developer.paypal.com on Nov 11, 2026:
 ## Commands
 ```
 npm run install:all          # root: installs server + client
-cd server && npm test        # 56 tests
+cd server && npm test        # 71 tests
+cd server && npm run preflight     # checks PayPal + AI setup, says exactly what to fix
+cd server && npm run smoke:paypal  # deeper: every toolkit tool Nudge uses (add --remind INV2-XXX to send one real email)
 cd server && npm run demo    # prints decisions for sample invoices (mock AI)
 cd server && npm run dev     # API on :3001   (copy .env.example to .env first)
 cd client && npm run dev     # UI on :5173, proxies /api to :3001
@@ -141,8 +143,9 @@ cd server && npm run seed:sandbox   # create demo invoices in the PayPal sandbox
 - [x] Phase 1: agent policy, prompt, schema, fallbacks, tests, demo, this file
 - [x] Phase 2: Express API, React dashboard, live updates (SSE), approve/edit/reject, audit log, mock PayPal, tested in a browser
 - [~] Phase 3: PayPal adapter rebuilt on @paypal/agent-toolkit, activity log + endpoint, seed + smoke scripts, 56 tests (fake toolkit). NOT yet run against the real sandbox: do `npm run smoke:paypal` first
-- [ ] Phase 4: wire agent + PayPal + UI; approve/edit/reject; sandbox debugging
-- [ ] Phase 5: deploy (Render), polish, edge cases
+- [x] Phase 4 (code): toolkit mode checked against the real @paypal/agent-toolkit 1.11.0 source (request shapes, error JSON incl. status, so the 400/422 REST fallback does trigger); PayPal tech is visible in the UI (engine badge, "what PayPal will run" preview, confirmation naming the tool, live PayPal tool-call panel); preflight command; end-to-end run in toolkit mode with a PayPal-shaped fake
+- [ ] Phase 4 (needs YOUR keys): `npm run preflight`, then `npm run smoke:paypal`, then `npm run seed:sandbox`, then approve one real reminder and confirm the email arrives
+- [~] Phase 5: render.yaml checked against Render docs + /healthz + first deploy in mock mode; NOT yet deployed
 - [ ] Phase 6: README, Devpost text, video script, submission checklist
 - [ ] Upgrade A: client payment-behavior scoring (history already feeds the agent)
 - [ ] Upgrade B: client-facing negotiation page for the split offer

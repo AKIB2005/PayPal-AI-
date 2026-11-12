@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from './api.js';
+import { engineLabel, viaLabel } from './labels.js';
 
 const STAGE_LABEL = { wait: 'Wait', friendly: 'Friendly', firm: 'Firm', final: 'Final notice', split_offer: 'Split offer' };
 const money = (c, v) => `${c} ${v}`;
@@ -34,7 +35,7 @@ export default function InvoiceCard({ row, asOf, config, onChange, onNotice }) {
 
   const approve = () => run(
     () => api.approve(invoice.id, { asOf, subject, body }),
-    (r) => `Sent via PayPal${r.edited ? ' (your edited version)' : ''}.${r.partialPayment ? ' ' + r.partialPayment.note : ''}`
+    (r) => `Sent via PayPal${r.paypal ? ` ${viaLabel(r.paypal.via)} › ${r.paypal.tool}` : ''}${r.edited ? ' (your edited version)' : ''}.${r.partialPayment ? ' ' + r.partialPayment.note : ''}`
   );
   const reject = () => run(() => api.reject(invoice.id, asOf), () => 'Rejected. Nothing was sent.');
   const pay = () => run(() => api.pay(invoice.id), () => 'Payment recorded.');
@@ -92,6 +93,11 @@ export default function InvoiceCard({ row, asOf, config, onChange, onNotice }) {
             <button className="primary" onClick={approve} disabled={busy}>{edited ? 'Approve edited & send' : 'Approve & send'}</button>
             <button className="ghost" onClick={reject} disabled={busy}>Reject</button>
           </div>
+          <p className="preview">
+            On approve, PayPal {engineLabel(config?.paypalEngine, config?.paypalMode)} runs:{' '}
+            {decision.stage === 'split_offer' && decision.splitPlan ? <>enable partial payments (minimum {money(decision.currency, decision.splitPlan.minimumAmountDue)}), then </> : null}
+            <code>send_invoice_reminder</code>
+          </p>
         </div>
       )}
 

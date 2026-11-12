@@ -68,3 +68,9 @@ code { font-size: 12.5px; }
 @media (max-width: 520px) { .page { padding-top: 16px; } .pills { margin-top: 6px; } }
 
 .notice { margin-top: 14px; padding: 10px 14px; border: 1px solid var(--ok); border-radius: 10px; color: var(--ok); background: var(--surface); display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+
+.chip.strong { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.via { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+.via.agent-toolkit { color: var(--accent); border-color: var(--accent); }
+.bad { color: var(--err); }
+.preview { margin: 8px 0 0; font-size: 13px; color: var(--muted); }

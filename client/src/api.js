@@ -11,5 +11,6 @@ export const api = {
   approve: (id, payload) => request('POST', `/api/invoices/${encodeURIComponent(id)}/approve`, payload),
   reject: (id, asOf) => request('POST', `/api/invoices/${encodeURIComponent(id)}/reject`, { asOf }),
   pay: (id) => request('POST', `/api/demo/pay/${encodeURIComponent(id)}`),
-  audit: () => request('GET', '/api/audit')
+  audit: () => request('GET', '/api/audit'),
+  paypalActivity: () => request('GET', '/api/paypal/activity')
 };

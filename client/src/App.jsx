@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
 import InvoiceCard from './InvoiceCard.jsx';
+import { engineLabel, viaLabel } from './labels.js';
 
 const addDays = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 const CLOSED = ['PAID', 'MARKED_AS_PAID', 'CANCELLED', 'REFUNDED', 'MARKED_AS_REFUNDED'];
@@ -10,6 +11,7 @@ export default function App() {
   const [asOf, setAsOf] = useState('');
   const [rows, setRows] = useState([]);
   const [audit, setAudit] = useState([]);
+  const [pp, setPp] = useState({ engine: '', entries: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -22,9 +24,10 @@ export default function App() {
     setLoading(true);
     setError('');
     try {
-      const [inv, au] = await Promise.all([api.invoices(date, refresh), api.audit()]);
+      const [inv, au, act] = await Promise.all([api.invoices(date, refresh), api.audit(), api.paypalActivity().catch(() => ({ engine: '', entries: [] }))]);
       setRows(inv.rows);
       setAudit(au.entries);
+      setPp(act);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -69,7 +72,7 @@ export default function App() {
         </div>
         {config && (
           <div className="chips">
-            <span className="chip">PayPal: {config.paypalMode}</span>
+            <span className="chip strong">PayPal: {engineLabel(config.paypalEngine, config.paypalMode)}</span>
             <span className="chip">AI: {config.llmProvider}</span>
           </div>
         )}
@@ -84,6 +87,9 @@ export default function App() {
           <button className="ghost" onClick={() => asOf && setAsOf(addDays(asOf, 3))}>+3 days</button>
           <button className="ghost" onClick={() => asOf && setAsOf(addDays(asOf, 7))}>+7 days</button>
           <button className="ghost" onClick={() => asOf && setAsOf(addDays(asOf, 14))}>+14 days</button>
+          {config && config.suggestedDemoDate !== config.defaultAsOf && (
+            <button className="ghost" onClick={() => setAsOf(config.suggestedDemoDate)}>Demo day (+21)</button>
+          )}
           {config && <button className="ghost" onClick={() => setAsOf(config.defaultAsOf)}>Reset</button>}
           <button className="ghost" onClick={() => load(asOf, true)} disabled={loading}>Re-run agent</button>
         </div>
@@ -98,6 +104,9 @@ export default function App() {
       )}
       {error && <div className="error" role="alert">{error}</div>}
       {loading && rows.length === 0 && <p className="muted">Asking the agent…</p>}
+      {!loading && !error && rows.length === 0 && config?.paypalMode === 'sandbox' && (
+        <p className="muted">No invoices found in your PayPal sandbox yet. In the server folder run <code>npm run seed:sandbox</code>, then reload.</p>
+      )}
 
       <Section title="Needs your decision" count={needs.length} empty="Nothing needs a nudge on this date.">
         {needs.map((r) => <InvoiceCard key={r.invoice.id} row={r} asOf={asOf} config={config} onChange={() => load(asOf)} onNotice={setNotice} />)}
@@ -121,6 +130,23 @@ export default function App() {
                 {a.action === 'approved' && <>Approved a <b>{a.stage.replace('_', ' ')}</b> for {a.clientName}{a.edited ? ' (edited by you)' : ''}</>}
                 {a.action === 'rejected' && <>Rejected the <b>{a.stage.replace('_', ' ')}</b> for {a.clientName}</>}
                 {a.action === 'webhook' && <>PayPal event <code>{a.detail}</code></>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="activity paypal">
+        <h2>PayPal tool calls <span className="count">{engineLabel(pp.engine, config?.paypalMode)}</span></h2>
+        {pp.entries.length === 0 ? <p className="muted">No PayPal calls yet. Approve a draft or load invoices.</p> : (
+          <ul>
+            {pp.entries.slice(0, 8).map((e, i) => (
+              <li key={i}>
+                <time>{new Date(e.at).toLocaleTimeString()}</time>{' '}
+                <span className={`via ${e.via}`}>{viaLabel(e.via)}</span>{' '}
+                <code>{e.tool}</code>{' '}
+                <span className={e.ok ? 'ok' : 'bad'}>{e.ok ? 'ok' : 'failed'}</span>{' '}
+                <span className="muted small">{e.ms} ms{e.error ? ` · ${e.error}` : ''}</span>
               </li>
             ))}
           </ul>
