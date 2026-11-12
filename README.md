@@ -1,69 +1,207 @@
-# Nudge
+# Nudge — AI Collections Agent for Freelancers
 
-An AI agent that chases overdue PayPal invoices for freelancers, with a human always in the loop.
-The agent reads each overdue invoice, picks a stage (friendly, firm, final notice, or a split-payment offer),
-explains why, and drafts the message. You approve, edit or reject. Only then does PayPal send it.
+**Collect overdue invoices with more confidence—and less awkwardness.**
 
-Built for the PayPal AI Hackathon. **PayPal tech:** the official **PayPal Agent Toolkit** (`@paypal/agent-toolkit`: `list_invoices`, `get_invoice`, `send_invoice_reminder`, `record_payment_for_invoice`, `send_invoice`) on the Invoicing API v2, plus Webhooks (`INVOICING.INVOICE.*`), in the PayPal sandbox. A "PayPal activity" log shows which tool ran. **AI:** Claude or Gemini (swappable), with an offline mock mode.
+Nudge is a human-in-the-loop collections agent for freelancers. It monitors unpaid PayPal invoices, evaluates how overdue each payment is, recommends an appropriate follow-up strategy, and prepares a personalized message for the freelancer to review. The freelancer remains in control: **no reminder is sent without explicit approval.** PayPal handles invoice actions and payment-status tracking.
 
-## For judges: try it in 2 minutes
-No keys or accounts are needed. The app starts in mock mode with sample invoices (steps below). Then: read an agent decision and its reasoning, edit a draft and click **Approve & send**, watch the **PayPal tool calls** panel, use **+7 days** to move the demo date, and click **Demo: simulate the client paying** to see the live update. To use the real PayPal sandbox and a real AI model, follow "Use the real PayPal sandbox" below.
+<p align="center">
+  <strong>Monitor → Decide → Explain → Approve → Follow up</strong>
+</p>
 
-## How it fits together
+## The problem
+
+Freelancers regularly lose time and energy chasing late payments. A gentle nudge may be enough for a recently overdue invoice, while a payment that has been outstanding for weeks may need a firmer follow-up or a conversation about installments. Handling every client manually is repetitive—and getting the tone wrong can strain a professional relationship.
+
+## The Nudge approach
+
+Nudge turns invoice follow-up into a structured, reviewable workflow:
+
+1. **Monitor invoices** — retrieve invoice details and payment status from PayPal.
+2. **Evaluate overdue time** — assess how long an invoice has been unpaid.
+3. **Recommend a strategy** — choose an appropriate follow-up stage from the application's policy rules.
+4. **Explain the recommendation** — show why that approach is appropriate.
+5. **Prepare a personalized draft** — create a message the freelancer can review and edit.
+6. **Request approval** — send only after the freelancer explicitly approves.
+7. **Track the outcome** — reflect payment and invoice updates from PayPal.
+
+### Example follow-up strategy
+
+| Situation | Possible approach |
+|---|---|
+| A few days overdue | Friendly, low-pressure reminder |
+| Around one week overdue | Clear follow-up with the invoice details |
+| Several weeks overdue | Firmer request and, where eligible, a suggested payment plan |
+
+The exact action is governed by application policy and invoice eligibility—not by an unrestricted AI decision.
+
+## Why it is different
+
+- **Human approval by design:** the agent prepares actions; the freelancer decides whether to send them.
+- **Policy-constrained decisions:** the application determines which follow-up stages are allowed before a recommendation is made.
+- **Explainable recommendations:** each proposed follow-up includes a reason.
+- **Financial guardrails:** calculations and payment-plan amounts are handled by application code, not invented by the language model.
+- **PayPal-native workflow:** invoice operations use PayPal's Agent Toolkit and Invoicing API integration.
+- **Fallback drafting:** if the configured language model is unavailable or returns invalid output, Nudge can fall back to safe templates.
+
+## Product workflow
+
+```mermaid
+flowchart TD
+    A[PayPal invoices] --> B[ Nudge retrieves invoice and payment data ]
+    B --> C[Policy engine evaluates overdue status and eligibility]
+    C --> D[Agent recommends a follow-up stage]
+    D --> E[Explain decision and prepare message]
+    E --> F{Freelancer approval}
+    F -->|Edit or reject| G[Keep draft / discard]
+    F -->|Approve| H[PayPal sends the reminder]
+    H --> I[PayPal payment and invoice status updates]
+    I --> B
+```
+
+## PayPal integration
+
+Nudge integrates with PayPal's invoice workflow. The dashboard's PayPal activity panel is intended to make tool activity visible rather than hiding payment operations behind a generic assistant response.
+
+The integration includes these operations where supported by the configured PayPal environment:
+
+- List invoices
+- Retrieve invoice details
+- Send invoice reminders
+- Send invoices
+- Record payment information
+- Handle invoice-related webhook events
+
+The application uses the PayPal Agent Toolkit for supported invoice actions and the PayPal Invoicing REST API for operations that require direct API calls. Test the exact operations against your own PayPal Sandbox app before presenting them as live in a demo.
+
+## Architecture
+
 ```mermaid
 flowchart LR
-  UI["React dashboard"] -->|"approve / edit / reject"| API["Express API"]
-  API --> POLICY["Policy engine: which stages are allowed"]
-  POLICY --> AI["AI model: choose a stage, explain, draft"]
-  AI --> API
-  API -->|"only after human approval"| TK["PayPal Agent Toolkit: send_invoice_reminder, list_invoices, ..."]
-  API -->|"partial payments"| REST["PayPal Invoicing API"]
-  TK --> PP[("PayPal sandbox")]
-  REST --> PP
-  PP -->|"INVOICING.INVOICE.* webhook"| API
-  API -->|"live updates"| UI
+    UI[React + Vite dashboard] --> API[Node.js + Express API]
+    API --> POLICY[Policy and approval checks]
+    POLICY --> AGENT[Collections decision and drafting layer]
+    AGENT --> API
+    API --> TOOLKIT[PayPal Agent Toolkit]
+    API --> REST[PayPal Invoicing API]
+    TOOLKIT --> PP[PayPal Sandbox / PayPal]
+    REST --> PP
+    PP -->|Invoice webhooks| API
+    API --> UI
 ```
 
-## Run it in 2 minutes (no keys needed)
+## Tech stack
+
+- **Frontend:** React, Vite
+- **Backend:** Node.js, Express
+- **Payments and invoicing:** PayPal Agent Toolkit, PayPal Invoicing API v2
+- **AI drafting:** configurable Gemini integration with template fallback
+- **Deployment:** Render
+
+## Run locally
+
+### Requirements
+
+- Node.js and npm
+- PayPal Developer Sandbox credentials for live sandbox integration
+- A Gemini API key only if you want to enable the Gemini drafting provider
+
+### 1. Install dependencies
+
+From the repository root:
+
 ```bash
 npm run install:all
-npm run build
-cd server && cp .env.example .env     # defaults: PAYPAL_MODE=mock, LLM_PROVIDER=mock
-npm start                              # http://localhost:3001
 ```
-Development with hot reload: `cd server && npm run dev` and `cd client && npm run dev` (UI on :5173).
-Tests: `npm test` (85 tests). Health check for hosting: `GET /healthz`.
 
-## Use a real model
-In `server/.env`: `LLM_PROVIDER=claude` and `ANTHROPIC_API_KEY=...` (or `gemini` and `GEMINI_API_KEY`). If the model fails or returns something unsafe, Nudge falls back to templates and says so in the UI.
+### 2. Configure the server
 
-## Use the real PayPal sandbox
-1. Create a **US** sandbox business account and a sandbox personal account at developer.paypal.com. (PayPal partial payments are not available for accounts in India, Brazil or Israel.)
-2. Create a REST app, copy the client id and secret into `server/.env`, set `PAYPAL_MODE=sandbox`, and set `PAYPAL_TEST_PAYER_EMAIL` to the personal account's email.
-3. `cd server && npm run preflight` checks your keys, PayPal access and AI setup and tells you exactly what to fix. Then `npm run smoke:paypal` exercises each toolkit tool, and `npm run seed:sandbox` creates and sends five invoices (set `PAYPAL_MODE=sandbox`; `sandbox-rest` skips the toolkit).
-4. In the dashboard set the demo date to the date the script prints (today + 21 days).
-5. Webhooks (optional locally): register `https://<your-host>/api/webhooks/paypal` for the invoicing events, then put the webhook id in `PAYPAL_WEBHOOK_ID`. Without it, signature checks fail closed and the "simulate the client paying" button still updates the dashboard.
+Create `server/.env` from the example file:
 
-## PayPal tools you can see in the app
-- The header badge shows which PayPal layer is running (**Agent Toolkit**, REST, or mock).
-- Before you approve, each draft says what PayPal will run (for a split offer: enable partial payments, then `send_invoice_reminder`).
-- After you approve, the confirmation names the exact tool that ran.
-- A **PayPal tool calls** panel logs every call with timing. REST calls (partial-payment update, webhook verification) are labelled REST, so nothing is passed off as a toolkit call.
+```bash
+# macOS / Linux
+cp server/.env.example server/.env
+```
 
-## Deploy on Render
-Full steps: `docs/DEPLOY.md`. After deploying, `cd server && npm run smoke:deployed -- https://YOUR-APP.onrender.com` runs a read-only health check.
+On Windows PowerShell:
 
-`render.yaml` is included. The first deploy runs in mock mode so it always starts; then in the Render dashboard set `PAYPAL_MODE=sandbox`, `LLM_PROVIDER=claude` and add your keys. State is in memory, so it resets when the free instance restarts. Because the URL is public, AI calls are capped per hour (`LLM_MAX_CALLS_PER_HOUR`), a stalled AI call times out after 20 s, and "Re-run agent" is throttled; over the cap the app falls back to templates and says so.
+```powershell
+Copy-Item server/.env.example server/.env
+```
 
-## How the agent decides
-1. **Policy (code):** days overdue, cooldown between reminders, an escalation ladder (never softer than the last reminder, no final notice without an earlier one), a minimum amount for a split offer. This produces the list of *allowed* stages.
-2. **AI:** picks one allowed stage using the client's payment history, explains why, drafts the message.
-3. **Guardrails:** amounts and payment plans are calculated by code (the AI writes placeholders and is rejected if it writes a money amount); invalid output falls back to templates; every decision requires approval, and the server re-checks policy at approval time.
+For a no-credentials local walkthrough, retain the mock settings from the example environment. For PayPal Sandbox, configure the following values in `server/.env`:
 
-## Honest limitations
-- **Demo date.** PayPal requires invoice due dates to be today or later, so past-due invoices can't be created in the sandbox. The dashboard has a simulated "today" so the 2-day and 3-week cases can be shown. This is for demonstration only.
-- State is kept in memory and resets when the server restarts.
-- PayPal enforces a maximum of 2 reminders per day per API caller.
+```env
+PAYPAL_MODE=sandbox
+PAYPAL_CLIENT_ID=your_sandbox_client_id
+PAYPAL_CLIENT_SECRET=your_sandbox_client_secret
+PAYPAL_TEST_PAYER_EMAIL=your_sandbox_personal_account_email
+
+# Optional AI drafting provider
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=your_available_gemini_model_id
+
+# Keep webhook verification fail-closed
+PAYPAL_WEBHOOK_ID=
+ALLOW_UNVERIFIED_WEBHOOKS=0
+```
+
+Do not commit `.env` files or publish API credentials. If the AI provider is not configured or temporarily unavailable, the application may use its template fallback.
+
+### 3. Build and start
+
+```bash
+npm run build
+npm start
+```
+
+Open **http://localhost:3001** (unless your environment specifies a different port).
+
+### 4. Run checks
+
+```bash
+npm test
+npm run preflight
+npm run check:submission
+```
+
+For PayPal Sandbox-specific scripts, run them from the `server` directory:
+
+```bash
+cd server
+npm run seed:sandbox
+npm run smoke:paypal
+```
+
+Seeding creates test invoices in the PayPal Sandbox account configured in your environment. It does not create real customer invoices.
+
+## Demo mode
+
+Nudge includes a mock mode with sample invoice data so reviewers can explore the workflow without connecting PayPal credentials. The dashboard supports a simulated date and a simulated client-payment action for demonstrating overdue stages and payment updates. These are demo conveniences and should not be confused with real PayPal transactions.
+
+## Deployment
+
+A Render Blueprint configuration is included in `render.yaml`. See [`docs/DEPLOY.md`](docs/DEPLOY.md) for deployment details.
+
+After deployment, configure the service's environment variables in Render. For a PayPal Sandbox deployment, set `PAYPAL_MODE=sandbox` and provide the Sandbox client ID, secret, and test payer email. If using Gemini, also set `LLM_PROVIDER=gemini` and `GEMINI_API_KEY`. Keep `ALLOW_UNVERIFIED_WEBHOOKS=0`.
+
+For real webhook processing, register the deployed endpoint shown in the application configuration (currently `/api/webhooks/paypal`) in the PayPal Developer Dashboard, subscribe to the invoice events supported by the app, and set the resulting webhook ID as `PAYPAL_WEBHOOK_ID`. Without a configured webhook ID, real webhook signatures are rejected by design; the local/demo payment simulation is separate.
+
+## Safety and limitations
+
+- **Approval is mandatory:** a reminder is not sent until a human approves it.
+- **Server-side revalidation:** the server checks the current policy again when an action is approved.
+- **AI is advisory:** the model does not calculate or authorize financial amounts.
+- **Sandbox first:** use PayPal Sandbox for development and judging demos; do not put production credentials in a public repository.
+- **Webhook verification:** unverified webhooks are not accepted by default.
+- **Demo state:** the current demo stores application state in memory; it can reset when the server restarts or a hosting instance sleeps/restarts.
+- **Simulated overdue dates:** the demo can shift its displayed date to illustrate overdue scenarios. This does not change PayPal's actual invoice due date.
+- **Provider availability:** external AI model availability and rate limits are outside Nudge's control; template fallback is available when configured model calls fail.
+
+## Project status
+
+Built for the **PayPal AI Hackathon**. The project demonstrates a freelancer-focused collections workflow with PayPal invoice integration and human-controlled follow-up actions. Features should be considered operational only to the extent verified in the deployed environment and current Sandbox configuration.
 
 ## License
-MIT
+
+This project is licensed under the [MIT License](LICENSE).
