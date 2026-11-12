@@ -14,7 +14,8 @@
     "seed:sandbox": "node scripts/seedSandbox.js",
     "smoke:paypal": "node scripts/smokePaypal.js",
     "preflight": "node scripts/preflight.js",
-    "smoke:deployed": "node scripts/smokeDeployed.js"
+    "smoke:deployed": "node scripts/smokeDeployed.js",
+    "check:submission": "node scripts/checkSubmission.js"
   },
   "dependencies": {
     "@paypal/agent-toolkit": "^1.11.0",

@@ -6,6 +6,24 @@ explains why, and drafts the message. You approve, edit or reject. Only then doe
 
 Built for the PayPal AI Hackathon. **PayPal tech:** the official **PayPal Agent Toolkit** (`@paypal/agent-toolkit`: `list_invoices`, `get_invoice`, `send_invoice_reminder`, `record_payment_for_invoice`, `send_invoice`) on the Invoicing API v2, plus Webhooks (`INVOICING.INVOICE.*`), in the PayPal sandbox. A "PayPal activity" log shows which tool ran. **AI:** Claude or Gemini (swappable), with an offline mock mode.
 
+## For judges: try it in 2 minutes
+No keys or accounts are needed. The app starts in mock mode with sample invoices (steps below). Then: read an agent decision and its reasoning, edit a draft and click **Approve & send**, watch the **PayPal tool calls** panel, use **+7 days** to move the demo date, and click **Demo: simulate the client paying** to see the live update. To use the real PayPal sandbox and a real AI model, follow "Use the real PayPal sandbox" below.
+
+## How it fits together
+```mermaid
+flowchart LR
+  UI["React dashboard"] -->|"approve / edit / reject"| API["Express API"]
+  API --> POLICY["Policy engine: which stages are allowed"]
+  POLICY --> AI["AI model: choose a stage, explain, draft"]
+  AI --> API
+  API -->|"only after human approval"| TK["PayPal Agent Toolkit: send_invoice_reminder, list_invoices, ..."]
+  API -->|"partial payments"| REST["PayPal Invoicing API"]
+  TK --> PP[("PayPal sandbox")]
+  REST --> PP
+  PP -->|"INVOICING.INVOICE.* webhook"| API
+  API -->|"live updates"| UI
+```
+
 ## Run it in 2 minutes (no keys needed)
 ```bash
 npm run install:all
@@ -14,7 +32,7 @@ cd server && cp .env.example .env     # defaults: PAYPAL_MODE=mock, LLM_PROVIDER
 npm start                              # http://localhost:3001
 ```
 Development with hot reload: `cd server && npm run dev` and `cd client && npm run dev` (UI on :5173).
-Tests: `npm test` (79 tests). Health check for hosting: `GET /healthz`.
+Tests: `npm test` (85 tests). Health check for hosting: `GET /healthz`.
 
 ## Use a real model
 In `server/.env`: `LLM_PROVIDER=claude` and `ANTHROPIC_API_KEY=...` (or `gemini` and `GEMINI_API_KEY`). If the model fails or returns something unsafe, Nudge falls back to templates and says so in the UI.

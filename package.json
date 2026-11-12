@@ -8,6 +8,7 @@
     "build": "npm --prefix client run build",
     "start": "node server/src/index.js",
     "test": "npm --prefix server test",
-    "preflight": "npm --prefix server run preflight"
+    "preflight": "npm --prefix server run preflight",
+    "check:submission": "npm --prefix server run check:submission"
   }
 }

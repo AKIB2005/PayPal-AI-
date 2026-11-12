@@ -123,7 +123,8 @@ REST details, checked against developer.paypal.com on Nov 11, 2026:
 ## Commands
 ```
 npm run install:all          # root: installs server + client
-cd server && npm test        # 79 tests
+cd server && npm test        # 85 tests
+npm run check:submission     # (repo root) pre-submit check: placeholders, license, secrets, .env not committed
 cd server && npm run preflight     # checks PayPal + AI setup, says exactly what to fix
 cd server && npm run smoke:deployed -- https://YOUR-APP.onrender.com   # read-only post-deploy check (never sends anything)
 cd server && npm run smoke:paypal  # deeper: every toolkit tool Nudge uses (add --remind INV2-XXX to send one real email)
@@ -148,6 +149,7 @@ cd server && npm run seed:sandbox   # create demo invoices in the PayPal sandbox
 - [ ] Phase 4 (needs YOUR keys): `npm run preflight`, then `npm run smoke:paypal`, then `npm run seed:sandbox`, then approve one real reminder and confirm the email arrives
 - [x] Phase 5 (code): AI call timeout (20 s) + hourly AI budget cap + 10 s "Re-run agent" throttle (public-URL cost safety), graceful SIGTERM shutdown, loading state + stale-card guard in the UI, mobile layout checked at 390 px, `smoke:deployed` post-deploy check, `docs/DEPLOY.md`, Render build/start commands run from a clean copy (10 s build, serves app, SPA fallback, 404 JSON for unknown /api)
 - [ ] Phase 5 (needs YOU): deploy on Render (docs/DEPLOY.md), then run `npm run smoke:deployed`
-- [ ] Phase 6: README, Devpost text, video script, submission checklist
+- [x] Phase 6 (written): docs/DEVPOST_SUBMISSION.md (fill the [[markers]]), docs/VIDEO_SCRIPT.md, docs/FINAL_CHECKLIST.md, README judges quick-start + architecture diagram, `npm run check:submission`
+- [ ] Phase 6 (needs YOU): keys + real sandbox run, GitHub push, video, Devpost form, Submit
 - [ ] Upgrade A: client payment-behavior scoring (history already feeds the agent)
 - [ ] Upgrade B: client-facing negotiation page for the split offer
